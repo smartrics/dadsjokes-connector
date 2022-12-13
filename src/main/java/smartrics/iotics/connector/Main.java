@@ -2,28 +2,34 @@ package smartrics.iotics.connector;
 
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
-import com.iotics.api.ListAllTwinsRequest;
-import com.iotics.api.ListAllTwinsResponse;
+import com.iotics.api.DeleteTwinResponse;
 import com.iotics.api.TwinAPIGrpc;
+import com.iotics.api.TwinID;
+import com.iotics.api.UpsertTwinResponse;
 import com.iotics.sdk.identity.SimpleConfig;
 import com.iotics.sdk.identity.SimpleIdentityManager;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
-import smartrics.iotics.space.Builders;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import smartrics.iotics.connector.dadsjokes.Icanhazdadjoke;
+import smartrics.iotics.connector.dadsjokes.ModelOfIcanhazdadjoke;
+import smartrics.iotics.connector.dadsjokes.TwinOfIcanhazdadjoke;
 import smartrics.iotics.space.HttpServiceRegistry;
 import smartrics.iotics.space.IoticSpace;
 import smartrics.iotics.space.grpc.HostManagedChannelBuilderFactory;
 
 import java.io.IOException;
-import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 public class Main {
 
     private final String dns;
     private final SimpleIdentityManager sim;
     private final IoticSpace ioticSpace;
+    private static Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
     public Main(String dns, SimpleConfig user, SimpleConfig agent) throws IOException {
         this.dns = dns;
@@ -61,31 +67,38 @@ public class Main {
     public static void main(String[] args) throws Exception {
         SimpleConfig user = SimpleConfig.fromEnv("USER_");
         SimpleConfig agent = SimpleConfig.fromEnv("AGENT_");
-        if(!user.isValid() || !agent.isValid()) {
+
+        // 1 check twin exists - if not make it
+        // 2 publish every
+
+
+        if (!user.isValid() || !agent.isValid()) {
             throw new IllegalStateException("invalid identity env variables");
         }
         Main ds = new Main("demo.iotics.space", user, agent);
         ManagedChannel channel = ds.hostManagedChannel();
-        CountDownLatch completed = new CountDownLatch(1);
+        CountDownLatch l = new CountDownLatch(1);
         try {
             TwinAPIGrpc.TwinAPIFutureStub twinAPIStub = TwinAPIGrpc.newFutureStub(channel);
-            ListAllTwinsRequest listRequest = ListAllTwinsRequest.newBuilder()
-                    .setHeaders(Builders.newHeadersBuilder(ds.agentDid()).build())
-                    .build();
-            ListenableFuture<ListAllTwinsResponse> future = twinAPIStub.listAllTwins(listRequest);
-            future.addListener(() -> {
-                try {
-                    ListAllTwinsResponse result = future.get();
-                    System.out.println(result);
-                    completed.countDown();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }, MoreExecutors.directExecutor());
+            Icanhazdadjoke backend = new Icanhazdadjoke();
+            ModelOfIcanhazdadjoke model = new ModelOfIcanhazdadjoke(ds.sim, twinAPIStub, MoreExecutors.directExecutor());
+            ListenableFuture<TwinID> modelFuture = model.makeIfAbsent();
+            TwinID modelID = modelFuture.get();
+            LOGGER.info("model id: {}", modelID);
+            TwinOfIcanhazdadjoke t = new TwinOfIcanhazdadjoke(backend, ds.sim, twinAPIStub, MoreExecutors.directExecutor(), modelID);
+            ListenableFuture<DeleteTwinResponse> dFut = t.delete();
+            LOGGER.info("delete: {}", dFut.get());
+            ListenableFuture<UpsertTwinResponse> fut = t.make();
+            LOGGER.info("upsert: {}", fut.get());
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.error("exc when calling", e);
+        } finally {
+            LOGGER.info("waiting for cdl");
+            l.await();
+            LOGGER.info("channel shutting down");
+            channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+            LOGGER.info("channel shut down --");
         }
-        completed.await();
     }
 
 }
