@@ -8,8 +8,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Optional;
-import java.util.concurrent.CountDownLatch;
-import java.util.function.UnaryOperator;
+import java.util.function.Consumer;
 
 public class Icanhazdadjoke implements Backend {
     private static final String BASE = "https://icanhazdadjoke.com/";
@@ -24,11 +23,11 @@ public class Icanhazdadjoke implements Backend {
         cli = new OkHttpClient();
     }
 
-    public void random(UnaryOperator<DadJoke> success, UnaryOperator<String> fail) {
+    public void random(Consumer<DadJoke> success, Consumer<String> fail) {
         request(URL_RANDOM, success, fail);
     }
 
-    private void request(String url, UnaryOperator<DadJoke> success, UnaryOperator<String> fail)  {
+    private void request(String url, Consumer<DadJoke> success, Consumer<String> fail) {
         Request request = new Request.Builder()
                 .url(url)
                 .get()
@@ -40,7 +39,7 @@ public class Icanhazdadjoke implements Backend {
         call.enqueue(new DadJokeCallback(success, fail));
     }
 
-    public record DadJokeCallback(UnaryOperator<DadJoke> success, UnaryOperator<String> fail) implements Callback {
+    public record DadJokeCallback(Consumer<DadJoke> success, Consumer<String> fail) implements Callback {
 
         public static DadJoke parse(String body) {
             Gson gson = new Gson();
@@ -50,7 +49,7 @@ public class Icanhazdadjoke implements Backend {
         @Override
         public void onFailure(@NotNull Call call, @NotNull IOException e) {
             try {
-                fail.apply(e.getMessage());
+                fail.accept(e.getMessage());
             } catch (Exception exception) {
                 LOGGER.debug("Unable to invoke callback onFailure", e);
             }
@@ -62,9 +61,9 @@ public class Icanhazdadjoke implements Backend {
                     try {
                         DadJoke resp = parse(responseBody.string());
                         if (resp.status() == 200) {
-                            success.apply(resp);
+                            success.accept(resp);
                         } else {
-                            fail.apply("Failure when getting dad joke from API. Status: " + resp.status());
+                            fail.accept("Failure when getting dad joke from API. Status: " + resp.status());
                         }
                     } catch (Exception exception) {
                         LOGGER.debug("Unable to invoke callback onResponse", exception);

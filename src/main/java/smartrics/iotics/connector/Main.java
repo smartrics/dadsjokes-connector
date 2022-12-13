@@ -1,17 +1,17 @@
 package smartrics.iotics.connector;
 
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.MoreExecutors;
-import com.iotics.api.DeleteTwinResponse;
-import com.iotics.api.TwinAPIGrpc;
-import com.iotics.api.TwinID;
-import com.iotics.api.UpsertTwinResponse;
+import com.iotics.api.*;
 import com.iotics.sdk.identity.SimpleConfig;
 import com.iotics.sdk.identity.SimpleIdentityManager;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import smartrics.iotics.connector.dadsjokes.DadJoke;
 import smartrics.iotics.connector.dadsjokes.Icanhazdadjoke;
 import smartrics.iotics.connector.dadsjokes.ModelOfIcanhazdadjoke;
 import smartrics.iotics.connector.dadsjokes.TwinOfIcanhazdadjoke;
@@ -21,6 +21,8 @@ import smartrics.iotics.space.grpc.HostManagedChannelBuilderFactory;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -80,16 +82,37 @@ public class Main {
         CountDownLatch l = new CountDownLatch(1);
         try {
             TwinAPIGrpc.TwinAPIFutureStub twinAPIStub = TwinAPIGrpc.newFutureStub(channel);
+            FeedAPIGrpc.FeedAPIFutureStub feedAPIStub = FeedAPIGrpc.newFutureStub(channel);
             Icanhazdadjoke backend = new Icanhazdadjoke();
             ModelOfIcanhazdadjoke model = new ModelOfIcanhazdadjoke(ds.sim, twinAPIStub, MoreExecutors.directExecutor());
             ListenableFuture<TwinID> modelFuture = model.makeIfAbsent();
             TwinID modelID = modelFuture.get();
             LOGGER.info("model id: {}", modelID);
-            TwinOfIcanhazdadjoke t = new TwinOfIcanhazdadjoke(backend, ds.sim, twinAPIStub, MoreExecutors.directExecutor(), modelID);
+            TwinOfIcanhazdadjoke t = new TwinOfIcanhazdadjoke(backend, ds.sim, twinAPIStub, feedAPIStub, MoreExecutors.directExecutor(), modelID);
             ListenableFuture<DeleteTwinResponse> dFut = t.delete();
             LOGGER.info("delete: {}", dFut.get());
             ListenableFuture<UpsertTwinResponse> fut = t.make();
             LOGGER.info("upsert: {}", fut.get());
+
+            new Timer().schedule(new TimerTask() {
+
+                @Override
+                public void run() {
+                    ListenableFuture<DadJoke> f = t.shareRandomJoke();
+                    Futures.addCallback(f, new FutureCallback<>() {
+                        @Override
+                        public void onSuccess(DadJoke dadJoke) {
+                            LOGGER.info("sharing joke: {}", dadJoke);
+                        }
+
+                        @Override
+                        public void onFailure(Throwable throwable) {
+                            LOGGER.error("sharing joke failed", throwable);
+                        }
+                    }, MoreExecutors.directExecutor());
+                }
+            }, 0, 60000);
+
         } catch (Exception e) {
             LOGGER.error("exc when calling", e);
         } finally {

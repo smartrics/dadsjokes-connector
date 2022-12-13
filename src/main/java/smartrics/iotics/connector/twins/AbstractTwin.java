@@ -27,11 +27,13 @@ public abstract class AbstractTwin {
     protected final Executor executor;
     protected final TwinAPIGrpc.TwinAPIFutureStub twinStub;
 
-    public AbstractTwin(SimpleIdentityManager sim, String keyName, TwinAPIGrpc.TwinAPIFutureStub stub, Executor executor) {
+    public AbstractTwin(SimpleIdentityManager sim, String keyName,
+                        TwinAPIGrpc.TwinAPIFutureStub twinStub,
+                        Executor executor) {
         this.sim = sim;
         this.identity = this.sim.newTwinIdentity(keyName);
         this.executor = executor;
-        this.twinStub = stub;
+        this.twinStub = twinStub;
     }
 
     public abstract ListenableFuture<UpsertTwinResponse> make();
