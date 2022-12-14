@@ -63,10 +63,15 @@ public class Main {
         SimpleConfig user = SimpleConfig.fromEnv("USER_");
         SimpleConfig agent = SimpleConfig.fromEnv("AGENT_");
 
+        String spaceDns = System.getenv("SPACE");
+        if(spaceDns==null) {
+            throw new IllegalArgumentException("$SPACE not defined in env (SPACE=<yourSpace>.iotics.space");
+        }
+
         if (!user.isValid() || !agent.isValid()) {
             throw new IllegalStateException("invalid identity env variables");
         }
-        Main ds = new Main("demo.iotics.space", user, agent);
+        Main ds = new Main(spaceDns, user, agent);
         ManagedChannel channel = ds.hostManagedChannel();
         CountDownLatch l = new CountDownLatch(1);
         try {
