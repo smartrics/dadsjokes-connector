@@ -7,8 +7,7 @@ import com.google.common.util.concurrent.MoreExecutors;
 import com.iotics.api.*;
 import com.iotics.sdk.identity.SimpleConfig;
 import com.iotics.sdk.identity.SimpleIdentityManager;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
+import io.grpc.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import smartrics.iotics.connector.dadsjokes.DadJoke;
@@ -28,14 +27,12 @@ import java.util.concurrent.TimeUnit;
 
 public class Main {
 
-    private final String dns;
     private final SimpleIdentityManager sim;
     private final IoticSpace ioticSpace;
-    private static Logger LOGGER = LoggerFactory.getLogger(Main.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
     public Main(String dns, SimpleConfig user, SimpleConfig agent) throws IOException {
-        this.dns = dns;
-        HttpServiceRegistry sr = new HttpServiceRegistry(this.dns);
+        HttpServiceRegistry sr = new HttpServiceRegistry(dns);
 
         ioticSpace = new IoticSpace(sr);
         ioticSpace.initialise();
@@ -52,11 +49,7 @@ public class Main {
                 .build();
     }
 
-    public String agentDid() {
-        return sim.agentIdentity().did();
-    }
-
-    public ManagedChannel hostManagedChannel() throws IOException {
+    public ManagedChannel hostManagedChannel() {
         ManagedChannelBuilder channelBuilder = new HostManagedChannelBuilderFactory()
                 .withSimpleIdentityManager(sim)
                 .withSGrpcEndpoint(ioticSpace.endpoints().grpc())
@@ -69,10 +62,6 @@ public class Main {
     public static void main(String[] args) throws Exception {
         SimpleConfig user = SimpleConfig.fromEnv("USER_");
         SimpleConfig agent = SimpleConfig.fromEnv("AGENT_");
-
-        // 1 check twin exists - if not make it
-        // 2 publish every
-
 
         if (!user.isValid() || !agent.isValid()) {
             throw new IllegalStateException("invalid identity env variables");
