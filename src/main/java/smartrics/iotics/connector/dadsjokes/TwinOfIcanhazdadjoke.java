@@ -1,7 +1,6 @@
 package smartrics.iotics.connector.dadsjokes;
 
 import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.gson.Gson;
@@ -9,10 +8,9 @@ import com.iotics.api.*;
 import com.iotics.sdk.identity.SimpleIdentityManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import smartrics.iotics.connector.twins.AbstractTwinWithModel;
 import smartrics.iotics.space.Builders;
+import smartrics.iotics.space.twins.AbstractTwinWithModel;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;

@@ -2,7 +2,7 @@ package smartrics.iotics.connector.dadsjokes;
 
 import com.iotics.api.*;
 import com.iotics.sdk.identity.SimpleIdentityManager;
-import smartrics.iotics.connector.twins.GenericModelTwin;
+import smartrics.iotics.space.twins.GenericModelTwin;
 
 import java.util.concurrent.Executor;
 
