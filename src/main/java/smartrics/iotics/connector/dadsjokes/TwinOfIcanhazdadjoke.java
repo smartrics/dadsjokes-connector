@@ -89,6 +89,7 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel {
                         .build())
                 .setPayload(UpsertTwinRequest.Payload.newBuilder()
                         .setTwinId(TwinID.newBuilder().setId(identity.did()).build())
+                        .setVisibility(Visibility.PUBLIC)
                         .addProperties(Property.newBuilder()
                                 .setKey(ON_RDFS + "#comment")
                                 .setLiteralValue(Literal.newBuilder().setValue("Dad Joke generator").build())
