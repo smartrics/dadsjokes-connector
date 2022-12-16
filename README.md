@@ -21,7 +21,7 @@ SPACE=<your space>.iotics.space
 SHARE_PERIOD_SEC=<default 60s>
 ```
 
-Copy the ffi library at `lib/lib-iotics-id-sdk.so` into the lib directory where all your dependencoes are.
+Copy the ffi library at `lib/lib-iotics-id-sdk.so` into the lib directory where all your dependencies are.
 
 Use the following command line:
 
