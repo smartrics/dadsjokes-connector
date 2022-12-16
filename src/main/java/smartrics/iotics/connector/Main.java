@@ -64,6 +64,12 @@ public class Main {
         SimpleConfig agent = SimpleConfig.fromEnv("AGENT_");
 
         String spaceDns = System.getenv("SPACE");
+        String jokePeriodString = System.getenv("SHARE_PERIOD_SEC");
+
+        if(jokePeriodString == null) {
+            jokePeriodString = "60";
+        }
+
         if(spaceDns==null) {
             throw new IllegalArgumentException("$SPACE not defined in env (SPACE=<yourSpace>.iotics.space");
         }
@@ -88,6 +94,9 @@ public class Main {
             ListenableFuture<UpsertTwinResponse> fut = t.make();
             LOGGER.info("upsert: {}", fut.get());
 
+            int periodSec = Integer.parseInt(jokePeriodString);
+            Duration period = Duration.ofSeconds(periodSec);
+
             new Timer().schedule(new TimerTask() {
 
                 @Override
@@ -105,7 +114,7 @@ public class Main {
                         }
                     }, MoreExecutors.directExecutor());
                 }
-            }, 0, 60000);
+            }, 0, period.toMillis());
 
         } catch (Exception e) {
             LOGGER.error("exc when calling", e);
