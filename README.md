@@ -27,3 +27,18 @@ Use the following command line:
 
 `java -Djava.library.path=./lib -classpath "dadsjokes-1.0-SNAPSHOT.jar:lib/*" smartrics.iotics.connector.Main`
 
+## Run as a service
+Unpack the connector tarball in `/opt/iotics/dadsjokes-connector` with the following structure
+```shell
+/opt/iotics/dadsjokes-connector
+| dadsjokes-1.0-SNAPSHOT.jar
+| env
+| run.sh
+| env
+| lib/
+```
+with `lib/` containing all the dependencies.
+
+Configure your environment variables in the `env` file.
+Copy `bin/dadsjoke-connector.service` into `/etc/systemd/system/` and modify it accordingly.
+

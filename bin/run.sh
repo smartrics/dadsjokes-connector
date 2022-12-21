@@ -1,12 +1,6 @@
 #!/usr/bin/env sh
+HOME=/opt/iotics/dadsjokes-connector
+export $(cat $HOME/env | xargs)
 
-HOME="./target"
+cd $HOME && java -Djava.library.path=$HOME/lib -classpath "$HOME/dadsjokes-1.0-SNAPSHOT.jar:$HOME/lib/*" smartrics.iotics.connector.Main &
 
-JAVA_OPTS="$JAVA_OPTS -Djava.library.path=$HOME/lib"
-
-CP="$HOME/dadsjokes-1.0-SNAPSHOT.jar"
-CP="$CP:$HOME/lib/*"
-
-MAIN_CLASS="smartrics.iotics.connector.Main"
-
-java $JAVA_OPTS -classpath "$CP" $MAIN_CLASS
