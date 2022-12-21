@@ -22,6 +22,7 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TwinOfIcanhazdadjoke.class);
     private final Backend backend;
+    private Integer count;
 
     public TwinOfIcanhazdadjoke(Backend backend, SimpleIdentityManager sim,
                                 TwinAPIGrpc.TwinAPIFutureStub twinStub,
@@ -29,6 +30,7 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel {
                                 Executor executor, TwinID modelDid) {
         super(sim, "icanhazdadjoke_keyname", twinStub, feedStub, executor, modelDid);
         this.backend = backend;
+        this.count = 0;
     }
 
     public ListenableFuture<DadJoke> shareRandomJoke() {
@@ -47,28 +49,35 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel {
                 String joke = makeJokePayload(dadJoke);
                 ListenableFuture<ShareFeedDataResponse> f = TwinOfIcanhazdadjoke.super.share(jokeFeedID, joke);
                 LOGGER.info("published {}", joke);
-                statusPayload = makeStatusPayload(true, "OK");
+                TwinOfIcanhazdadjoke.this.count = this.count + 1;
+                statusPayload = makeStatusPayload(true, "OK", this.incCount());
                 TwinOfIcanhazdadjoke.super.share(statusFeedID, statusPayload);
                 LOGGER.info("published {}", statusPayload);
                 ret.set(dadJoke);
             } else {
                 String s = "Backend status: " + dadJoke.status();
-                statusPayload = makeStatusPayload(false, s);
+                statusPayload = makeStatusPayload(false, s, this.count);
                 TwinOfIcanhazdadjoke.super.share(statusFeedID, statusPayload);
                 LOGGER.info("published {}", statusPayload);
                 ret.setException(new IllegalStateException(s));
             }
         }, s -> {
-            ListenableFuture<ShareFeedDataResponse> f1 = TwinOfIcanhazdadjoke.super.share(statusFeedID, makeStatusPayload(false, s));
+            TwinOfIcanhazdadjoke.super.share(statusFeedID, makeStatusPayload(false, s, this.count));
             ret.setException(new IllegalStateException(s));
         });
         return ret;
     }
 
-    private String makeStatusPayload(boolean status, String message) {
+    private Integer incCount() {
+        this.count = this.count + 1;
+        return this.count;
+    }
+
+    private String makeStatusPayload(boolean status, String message, Integer count) {
         Map<String, String> values = new HashMap<>();
         values.put("status", Boolean.toString(status));
         values.put("message", message);
+        values.put("count", count.toString());
         values.put("timestamp", DateTimeFormatter.ISO_DATE_TIME.format(LocalDateTime.now()));
         return new Gson().toJson(values);
     }
@@ -115,6 +124,14 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel {
                         .addFeeds(UpsertFeedWithMeta.newBuilder()
                                 .setId("random_joke")
                                 .setStoreLast(true)
+                                .addProperties(Property.newBuilder()
+                                        .setKey(ON_RDFS + "#comment")
+                                        .setLiteralValue(Literal.newBuilder().setValue("Random joke feed").build())
+                                        .build())
+                                .addProperties(Property.newBuilder()
+                                        .setKey(ON_RDFS + "#label")
+                                        .setLiteralValue (Literal.newBuilder().setValue("Joke").build())
+                                        .build())
                                 .addValues(Value.newBuilder()
                                         .setLabel("id").setComment("the ID of the joke")
                                         .setDataType("string")
@@ -135,9 +152,21 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel {
                                         .setLabel("status").setComment("twin status")
                                         .setDataType("boolean")
                                         .build())
+                                .addProperties(Property.newBuilder()
+                                        .setKey(ON_RDFS + "#comment")
+                                        .setLiteralValue(Literal.newBuilder().setValue("Twin status").build())
+                                        .build())
+                                .addProperties(Property.newBuilder()
+                                        .setKey(ON_RDFS + "#label")
+                                        .setLiteralValue (Literal.newBuilder().setValue("Status").build())
+                                        .build())
                                 .addValues(Value.newBuilder()
                                         .setLabel("message").setComment("twin status message")
                                         .setDataType("string")
+                                        .build())
+                                .addValues(Value.newBuilder()
+                                        .setLabel("count").setComment("count of jokes published since start of the connector")
+                                        .setDataType("integer")
                                         .build())
                                 .addValues(Value.newBuilder()
                                         .setLabel("timestamp").setComment("joke date")
@@ -147,26 +176,4 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel {
                         .build())
                 .build());
     }
-
-    private static abstract class LoggingFutureCallback<T> implements FutureCallback<T>, Consumer<T> {
-
-        private final String message;
-
-        public LoggingFutureCallback(String m) {
-            this.message = m;
-        }
-
-        @Override
-        public void onSuccess(T t) {
-            LOGGER.error("{} - {}", message, t);
-            accept(t);
-        }
-
-        @Override
-        public void onFailure(Throwable throwable) {
-            LOGGER.error("{} - error in operation", message, throwable);
-        }
-
-    }
-
 }
