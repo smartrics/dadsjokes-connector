@@ -1,6 +1,5 @@
 package smartrics.iotics.connector.dadsjokes;
 
-import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.gson.Gson;
@@ -10,27 +9,32 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import smartrics.iotics.space.Builders;
 import smartrics.iotics.space.twins.AbstractTwinWithModel;
+import smartrics.iotics.space.twins.Maker;
+import smartrics.iotics.space.twins.Publisher;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executor;
-import java.util.function.Consumer;
 
-public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel {
+public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel implements Maker, Publisher {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TwinOfIcanhazdadjoke.class);
     private final Backend backend;
+    private final FeedAPIGrpc.FeedAPIFutureStub feedStub;
+    private final TwinAPIGrpc.TwinAPIFutureStub twinStub;
     private Integer count;
 
     public TwinOfIcanhazdadjoke(Backend backend, SimpleIdentityManager sim,
                                 TwinAPIGrpc.TwinAPIFutureStub twinStub,
                                 FeedAPIGrpc.FeedAPIFutureStub feedStub,
                                 Executor executor, TwinID modelDid) {
-        super(sim, "icanhazdadjoke_keyname", twinStub, feedStub, executor, modelDid);
+        super(sim, "icanhazdadjoke_keyname", executor, modelDid);
         this.backend = backend;
         this.count = 0;
+        this.feedStub = feedStub;
+        this.twinStub = twinStub;
     }
 
     public ListenableFuture<DadJoke> shareRandomJoke() {
@@ -47,22 +51,22 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel {
             String statusPayload;
             if (dadJoke.status() == 200) {
                 String joke = makeJokePayload(dadJoke);
-                ListenableFuture<ShareFeedDataResponse> f = TwinOfIcanhazdadjoke.super.share(jokeFeedID, joke);
+                ListenableFuture<ShareFeedDataResponse> f = Publisher.super.share(jokeFeedID, joke);
                 LOGGER.info("published {}", joke);
                 TwinOfIcanhazdadjoke.this.count = this.count + 1;
                 statusPayload = makeStatusPayload(true, "OK", this.incCount());
-                TwinOfIcanhazdadjoke.super.share(statusFeedID, statusPayload);
+                Publisher.super.share(statusFeedID, statusPayload);
                 LOGGER.info("published {}", statusPayload);
                 ret.set(dadJoke);
             } else {
                 String s = "Backend status: " + dadJoke.status();
                 statusPayload = makeStatusPayload(false, s, this.count);
-                TwinOfIcanhazdadjoke.super.share(statusFeedID, statusPayload);
+                Publisher.super.share(statusFeedID, statusPayload);
                 LOGGER.info("published {}", statusPayload);
                 ret.setException(new IllegalStateException(s));
             }
         }, s -> {
-            TwinOfIcanhazdadjoke.super.share(statusFeedID, makeStatusPayload(false, s, this.count));
+            Publisher.super.share(statusFeedID, makeStatusPayload(false, s, this.count));
             ret.setException(new IllegalStateException(s));
         });
         return ret;
@@ -103,7 +107,7 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel {
                                 .build())
                         .addProperties(Property.newBuilder()
                                 .setKey(ON_RDFS + "#label")
-                                .setLiteralValue (Literal.newBuilder().setValue("ICanHazDadJoke").build())
+                                .setLiteralValue(Literal.newBuilder().setValue("ICanHazDadJoke").build())
                                 .build())
                         .addProperties(Property.newBuilder()
                                 .setKey("https://data.iotics.com/app#model")
@@ -130,7 +134,7 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel {
                                         .build())
                                 .addProperties(Property.newBuilder()
                                         .setKey(ON_RDFS + "#label")
-                                        .setLiteralValue (Literal.newBuilder().setValue("Joke").build())
+                                        .setLiteralValue(Literal.newBuilder().setValue("Joke").build())
                                         .build())
                                 .addValues(Value.newBuilder()
                                         .setLabel("id").setComment("the ID of the joke")
@@ -158,7 +162,7 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel {
                                         .build())
                                 .addProperties(Property.newBuilder()
                                         .setKey(ON_RDFS + "#label")
-                                        .setLiteralValue (Literal.newBuilder().setValue("Status").build())
+                                        .setLiteralValue(Literal.newBuilder().setValue("Status").build())
                                         .build())
                                 .addValues(Value.newBuilder()
                                         .setLabel("message").setComment("twin status message")
@@ -175,5 +179,15 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel {
                                 .build())
                         .build())
                 .build());
+    }
+
+    @Override
+    public TwinAPIGrpc.TwinAPIFutureStub getTwinAPIFutureStub() {
+        return this.twinStub;
+    }
+
+    @Override
+    public FeedAPIGrpc.FeedAPIFutureStub getFeedAPIFutureStub() {
+        return this.feedStub;
     }
 }
