@@ -1,5 +1,7 @@
 package smartrics.iotics.connector.dadsjokes;
 
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.SettableFuture;
 import com.google.gson.Gson;
@@ -38,27 +40,41 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel implements Maker
     public ListenableFuture<DadJoke> shareRandomJoke() {
         SettableFuture<DadJoke> ret = SettableFuture.create();
         FeedID jokeFeedID = FeedID.newBuilder()
-                .setTwinId(TwinOfIcanhazdadjoke.this.identity.did())
+                .setTwinId(TwinOfIcanhazdadjoke.this.getIdentity().did())
                 .setId("random_joke")
                 .build();
         FeedID statusFeedID = FeedID.newBuilder()
-                .setTwinId(TwinOfIcanhazdadjoke.this.identity.did())
+                .setTwinId(TwinOfIcanhazdadjoke.this.getIdentity().did())
                 .setId("status")
                 .build();
         backend.random(dadJoke -> {
-            String statusPayload;
             if (dadJoke.status() == 200) {
                 String joke = makeJokePayload(dadJoke);
                 ListenableFuture<ShareFeedDataResponse> f = Publisher.super.share(jokeFeedID, joke);
-                LOGGER.info("published {}", joke);
-                TwinOfIcanhazdadjoke.this.count = this.count + 1;
-                statusPayload = makeStatusPayload(true, "OK", this.incCount());
-                Publisher.super.share(statusFeedID, statusPayload);
-                LOGGER.info("published {}", statusPayload);
-                ret.set(dadJoke);
+                final Publisher publisher = this;
+                Futures.addCallback(f, new FutureCallback<>() {
+                    @Override
+                    public void onSuccess(ShareFeedDataResponse shareFeedDataResponse) {
+                        LOGGER.info("published {}", joke);
+                        TwinOfIcanhazdadjoke.this.count = TwinOfIcanhazdadjoke.this.count + 1;
+                        String statusPayload = makeStatusPayload(true, "OK", TwinOfIcanhazdadjoke.this.incCount());
+                        publisher.share(statusFeedID, statusPayload);
+                        LOGGER.info("published {}", statusPayload);
+                        ret.set(dadJoke);
+                    }
+
+                    @Override
+                    public void onFailure(Throwable throwable) {
+                        String s = "Backend status: " + dadJoke.status();
+                        String statusPayload = makeStatusPayload(false, s, TwinOfIcanhazdadjoke.this.count);
+                        publisher.share(statusFeedID, statusPayload);
+                        LOGGER.info("published {}", statusPayload);
+                        ret.setException(throwable);
+                    }
+                }, getExecutor());
             } else {
                 String s = "Backend status: " + dadJoke.status();
-                statusPayload = makeStatusPayload(false, s, this.count);
+                String statusPayload = makeStatusPayload(false, s, this.count);
                 Publisher.super.share(statusFeedID, statusPayload);
                 LOGGER.info("published {}", statusPayload);
                 ret.setException(new IllegalStateException(s));
@@ -94,10 +110,10 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel implements Maker
 
     public ListenableFuture<UpsertTwinResponse> make() {
         return getTwinAPIFutureStub().upsertTwin(UpsertTwinRequest.newBuilder()
-                .setHeaders(Builders.newHeadersBuilder(sim.agentIdentity().did())
+                .setHeaders(Builders.newHeadersBuilder(getSim().agentIdentity().did())
                         .build())
                 .setPayload(UpsertTwinRequest.Payload.newBuilder()
-                        .setTwinId(TwinID.newBuilder().setId(identity.did()).build())
+                        .setTwinId(TwinID.newBuilder().setId(getIdentity().did()).build())
                         .setVisibility(Visibility.PUBLIC)
                         .addProperties(Property.newBuilder()
                                 .setKey(ON_RDFS + "#comment")
@@ -109,7 +125,7 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel implements Maker
                                 .build())
                         .addProperties(Property.newBuilder()
                                 .setKey("https://data.iotics.com/app#model")
-                                .setUriValue(Uri.newBuilder().setValue(modelDid.getId()).build())
+                                .setUriValue(Uri.newBuilder().setValue(getModelDid().getId()).build())
                                 .build())
                         .addProperties(Property.newBuilder()
                                 .setKey(ON_RDF + "#type")
