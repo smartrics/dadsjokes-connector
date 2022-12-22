@@ -28,12 +28,7 @@ public class Icanhazdadjoke implements Backend {
     }
 
     private void request(String url, Consumer<DadJoke> success, Consumer<String> fail) {
-        Request request = new Request.Builder()
-                .url(url)
-                .get()
-                .addHeader("User-Agent", "IOTICS Dad Joke connector (https://github.com/smartrics/dadsjokes-connector)")
-                .addHeader("Accept", "application/json")
-                .build();
+        Request request = new Request.Builder().url(url).get().addHeader("User-Agent", "IOTICS Dad Joke connector (https://github.com/smartrics/dadsjokes-connector)").addHeader("Accept", "application/json").build();
 
         Call call = cli.newCall(request);
         call.enqueue(new DadJokeCallback(success, fail));
@@ -57,18 +52,18 @@ public class Icanhazdadjoke implements Backend {
 
         @Override
         public void onResponse(@NotNull Call call, @NotNull Response response) {
-                Optional.ofNullable(response.body()).ifPresent(responseBody -> {
-                    try {
-                        DadJoke resp = parse(responseBody.string());
-                        if (resp.status() == 200) {
-                            success.accept(resp);
-                        } else {
-                            fail.accept("Failure when getting dad joke from API. Status: " + resp.status());
-                        }
-                    } catch (Exception exception) {
-                        LOGGER.debug("Unable to invoke callback onResponse", exception);
+            Optional.ofNullable(response.body()).ifPresent(responseBody -> {
+                try {
+                    DadJoke resp = parse(responseBody.string());
+                    if (resp.status() == 200) {
+                        success.accept(resp);
+                    } else {
+                        fail.accept("Failure when getting dad joke from API. Status: " + resp.status());
                     }
-                });
+                } catch (Exception exception) {
+                    LOGGER.debug("Unable to invoke callback onResponse", exception);
+                }
+            });
         }
     }
 }
