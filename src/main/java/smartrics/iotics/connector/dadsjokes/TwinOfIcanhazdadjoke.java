@@ -23,18 +23,16 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel implements Maker
     private static final Logger LOGGER = LoggerFactory.getLogger(TwinOfIcanhazdadjoke.class);
     private final Backend backend;
     private final FeedAPIGrpc.FeedAPIFutureStub feedStub;
-    private final TwinAPIGrpc.TwinAPIFutureStub twinStub;
     private Integer count;
 
     public TwinOfIcanhazdadjoke(Backend backend, SimpleIdentityManager sim,
                                 TwinAPIGrpc.TwinAPIFutureStub twinStub,
                                 FeedAPIGrpc.FeedAPIFutureStub feedStub,
                                 Executor executor, TwinID modelDid) {
-        super(sim, "icanhazdadjoke_keyname", executor, modelDid);
+        super(sim, "icanhazdadjoke_keyname", twinStub, executor, modelDid);
         this.backend = backend;
         this.count = 0;
         this.feedStub = feedStub;
-        this.twinStub = twinStub;
     }
 
     public ListenableFuture<DadJoke> shareRandomJoke() {
@@ -95,7 +93,7 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel implements Maker
     }
 
     public ListenableFuture<UpsertTwinResponse> make() {
-        return this.twinStub.upsertTwin(UpsertTwinRequest.newBuilder()
+        return getTwinAPIFutureStub().upsertTwin(UpsertTwinRequest.newBuilder()
                 .setHeaders(Builders.newHeadersBuilder(sim.agentIdentity().did())
                         .build())
                 .setPayload(UpsertTwinRequest.Payload.newBuilder()
@@ -179,11 +177,6 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel implements Maker
                                 .build())
                         .build())
                 .build());
-    }
-
-    @Override
-    public TwinAPIGrpc.TwinAPIFutureStub getTwinAPIFutureStub() {
-        return this.twinStub;
     }
 
     @Override
