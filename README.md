@@ -40,5 +40,5 @@ Unpack the connector tarball in `/opt/iotics/dadsjokes-connector` with the follo
 with `lib/` containing all the dependencies.
 
 Configure your environment variables in the `env` file.
-Copy `bin/dadsjoke-connector.service` into `/etc/systemd/system/` and modify it accordingly.
+Copy `bin/dadsjokes-connector.service` into `/etc/systemd/system/` and modify it accordingly.
 
