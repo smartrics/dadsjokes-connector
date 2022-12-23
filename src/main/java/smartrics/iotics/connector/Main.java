@@ -52,6 +52,7 @@ public class Main {
     public ManagedChannel hostManagedChannel() {
         ManagedChannelBuilder channelBuilder = new HostManagedChannelBuilderFactory()
                 .withSimpleIdentityManager(sim)
+                .withTimer(new Timer("token-scheduler"))
                 .withSGrpcEndpoint(ioticSpace.endpoints().grpc())
                 .withTokenTokenDuration(Duration.ofSeconds(10))
                 .withMaxRetryAttempts(10)
