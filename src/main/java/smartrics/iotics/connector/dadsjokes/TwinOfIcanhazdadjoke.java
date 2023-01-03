@@ -56,7 +56,6 @@ public class TwinOfIcanhazdadjoke extends AbstractTwinWithModel implements Maker
                     @Override
                     public void onSuccess(ShareFeedDataResponse shareFeedDataResponse) {
                         LOGGER.info("published {}", joke);
-                        TwinOfIcanhazdadjoke.this.count = TwinOfIcanhazdadjoke.this.count + 1;
                         String statusPayload = makeStatusPayload(true, "OK", TwinOfIcanhazdadjoke.this.incCount());
                         publisher.share(statusFeedID, statusPayload);
                         LOGGER.info("published {}", statusPayload);
